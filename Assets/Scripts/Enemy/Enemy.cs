@@ -182,6 +182,8 @@ public class Enemy : MonoBehaviour , IHitable
     {
         StopAllRoutines();
 
+        GetComponent<BoxCollider2D>().enabled = false;
+        m_rb2D.gravityScale = 0;
         m_animator.SetBool("isAlerted", false);
         m_animator.SetBool("isMoving", false);
         m_animator.SetTrigger("Dead");
