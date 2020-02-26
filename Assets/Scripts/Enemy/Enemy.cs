@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,42 +9,51 @@ public class Enemy : MonoBehaviour , IHitable
     [SerializeField] protected int m_health = 100;
     [SerializeField] protected int m_damage = 10;
     [SerializeField] protected int m_speed = 4;
+    [SerializeField] int m_defenseModifier = 1;
 
     Animator m_animator;
     Rigidbody2D m_rb2D;
     EnemyDetectionArea m_detectionArea;
+    EnemyAttack m_enemyAttack;
 
+    float m_pausedMovementTimer;
+    bool isActive;
     protected Vector3 m_targetPosition;
+    
+    [Tooltip("Number of different attack animations")]
 
     IEnumerator m_mainRoutine;
-    IEnumerator m_moveRoutine;
 
     void Awake()
     {
         m_rb2D = GetComponent<Rigidbody2D>();
         m_animator = GetComponent<Animator>();
         m_detectionArea = transform.GetChild(0).GetComponent<EnemyDetectionArea>();
+        m_enemyAttack = transform.GetChild(1).GetComponent<EnemyAttack>();
 
         m_mainRoutine = MainRoutine();
-        m_moveRoutine = MoveRoutine();
     }
 
     void Start()
     {
         // Freeze Rotation
         m_rb2D.freezeRotation = true;
+        // Add Listener on PlayerInRangeEvent
+        m_enemyAttack.PlayerInRangeEvent.AddListener(OnPlayerInRange);
+        // Add Listener if PlayerDies
+        Player.GetInstance.OnPlayerDeadEvent.AddListener(OnPlayerDead);
         // Start Enemyroutine
         StartCoroutine(m_mainRoutine);
-        StartCoroutine(m_moveRoutine);
     }
 
+    #region MovementSystem
     /// <summary>
     /// MovementRoutine for Enemys
     /// </summary>
     /// <returns></returns>
-    IEnumerator MoveRoutine()
+    void FixedUpdate()
     {
-        while (true)
+        if (isActive && m_pausedMovementTimer < 0)
         {
             Vector2 thisPos = new Vector2(transform.position.x, transform.position.y);
             Vector2 targetPos = new Vector2(m_targetPosition.x, transform.position.y);
@@ -59,10 +69,12 @@ public class Enemy : MonoBehaviour , IHitable
             {
                 m_animator.SetBool("isMoving", false);
             }
-
-            yield return null;
         }
-
+        else
+        {
+            m_animator.SetBool("isMoving", false);
+            m_pausedMovementTimer -= Time.fixedDeltaTime;
+        }
     }
 
     /// <summary>
@@ -86,6 +98,7 @@ public class Enemy : MonoBehaviour , IHitable
             }
         }
     }
+    #endregion
 
     /// <summary>
     /// Idle Behavior for an enemy. Can be overwritten.
@@ -101,16 +114,23 @@ public class Enemy : MonoBehaviour , IHitable
     /// </summary>
     protected virtual void AlertedBehavior()
     {
-        // TODO: Add AlertedBehavoir
+        // Targetposition is the Playerposition
         m_targetPosition = Player.GetInstance.transform.position;
+        // Start Attack Routine if not started
+        if (!m_enemyAttack.IsActive)
+        {
+            m_enemyAttack.StartAttackRoutine();
+        }
     }
+
 
     /// <summary>
     /// Main Coroutine of the Enemy
     /// </summary>
     IEnumerator MainRoutine()
     {
-        while (m_health > 0)
+        isActive = true;
+        while (m_health > 0 && isActive)
         {
             if (!m_detectionArea.IsAlerted)
             {
@@ -131,18 +151,71 @@ public class Enemy : MonoBehaviour , IHitable
                 }
                 yield return new WaitForSeconds(1);
             }
-
-
         }
     }
 
 
-
+    /// <summary>
+    /// Method called if enemy has been hit by player
+    /// </summary>
+    /// <param name="damage"></param>
     public virtual void OnHit(int damage)
     {
-        throw new System.NotImplementedException();
+        if (this.enabled)
+        {
+            m_health -= damage / m_defenseModifier;
+            if (m_health <= 0)
+            {
+                Die();
+            }
+        }
+        else
+        {
+            Debug.Log("Enemy already dead.");
+        }
     }
 
+    /// <summary>
+    /// Method called if enemy dies
+    /// </summary>
+    protected void Die()
+    {
+        StopAllRoutines();
 
+        m_animator.SetBool("isAlerted", false);
+        m_animator.SetBool("isMoving", false);
+        m_animator.SetTrigger("Dead");
+        this.enabled = false;
+    }
 
+    void StopAllRoutines()
+    {
+        isActive = false;
+        m_enemyAttack.StopAttackRoutine();
+    }
+
+    #region OnPlayerInRange Methods
+    void OnPlayerInRange(float delay)
+    {
+        PauseMovement(delay);
+    }
+
+    void PauseMovement(float delay)
+    {
+        m_pausedMovementTimer = delay;
+    }
+    #endregion
+
+    #region OnPlayerDead Methods
+
+    void OnPlayerDead()
+    {
+        StopAllRoutines();
+
+        m_animator.SetBool("isAlerted", true);
+        m_animator.SetBool("isMoving", false);
+        this.enabled = false;
+    }
+
+    #endregion
 }

@@ -116,7 +116,7 @@ public class PlayerMovement : MonoBehaviour, IPlayerControlls
     /// </summary>
     public void PlayerDeathHandler()
     {
-        m_animator.SetTrigger("Dead");
+        m_animator.SetBool("isDead", true);
         this.enabled = false;
     }
 }

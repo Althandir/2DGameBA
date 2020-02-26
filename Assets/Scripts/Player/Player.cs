@@ -12,7 +12,7 @@ interface IPlayerControlls
 }
 
 [RequireComponent(typeof(PlayerMovement))]
-public class Player : MonoBehaviour
+public class Player : MonoBehaviour, IHitable
 {
     static Player Instance;
     /// <summary>
@@ -21,7 +21,7 @@ public class Player : MonoBehaviour
     public static Player GetInstance { get => Instance; }
 
     [SerializeField] int m_health = 100;
-    [SerializeField] UnityEvent m_onPlayerDead;
+    [SerializeField] UnityEvent m_onPlayerDead = new UnityEvent();
 
     IEnumerator m_healthChecker;
     bool m_healthCheckerActive;
@@ -49,7 +49,6 @@ public class Player : MonoBehaviour
     private void Start()
     {
         m_healthChecker = HealthChecker();
-        m_onPlayerDead = new UnityEvent();
 
         StartCoroutine(m_healthChecker);
     }
@@ -81,4 +80,13 @@ public class Player : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Method called if Player has been hit by something
+    /// </summary>
+    /// <param name="damage"></param>
+    public void OnHit(int damage)
+    {
+        Debug.Log("Player has been hit");
+        m_health -= damage;
+    }
 }

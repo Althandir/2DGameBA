@@ -4,12 +4,10 @@ using UnityEngine;
 
 public class EnemyMinotaur : Enemy
 {
-    [SerializeField] int m_defenseModifier = 2;
-
     public override void OnHit(int damage)
     {
         Debug.Log("You hit an Minotaur.");
-        m_health -= damage / m_defenseModifier;
+        base.OnHit(damage);
     }
 
     protected override void RotateToTarget()

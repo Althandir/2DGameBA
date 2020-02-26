@@ -3,23 +3,22 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(BoxCollider2D))]
-public class PlayerAttack : MonoBehaviour, IPlayerControlls
+public sealed class PlayerAttack : HitArea, IPlayerControlls
 {
     bool m_attackPressed;
-    [SerializeField] float m_attackTimer;
+    float m_attackTimer;
+
+    [Tooltip("Delay to finish AttackAnimation")]
+    [SerializeField] float attackDelay = 0.5f;
+    [Tooltip("Damage done per hit")]
     [SerializeField] int m_damage = 25;
 
-    Animator m_animator;
-    [SerializeField] List<BoxCollider2D> m_objectsToHit;
-    [SerializeField] float attackDelay;
-   
-    void Awake()
+    protected override void Awake()
     {
-        m_animator = transform.parent.GetComponent<Animator>();
-        attackDelay = 0.5f;
+        base.Awake();
     }
 
-    private void Start()
+    protected override void Start()
     {
         Player.GetInstance.OnPlayerDeadEvent.AddListener(PlayerDeathHandler);
     }
@@ -27,9 +26,7 @@ public class PlayerAttack : MonoBehaviour, IPlayerControlls
     void Update()
     {
         UpdateAttackTimer();
-
         CheckForInput();
-
     }
 
     void FixedUpdate()
@@ -38,22 +35,6 @@ public class PlayerAttack : MonoBehaviour, IPlayerControlls
         {
             m_attackPressed = false;
             StartCoroutine(HandleAttack());
-        }
-    }
-
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.GetComponent<BoxCollider2D>())
-        {
-            m_objectsToHit.Add(collision.GetComponent<BoxCollider2D>());
-        }
-    }
-
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        if (m_objectsToHit.Contains(collision.GetComponent<BoxCollider2D>()))
-        {
-            m_objectsToHit.Remove(collision.GetComponent<BoxCollider2D>());
         }
     }
 
@@ -138,6 +119,8 @@ public class PlayerAttack : MonoBehaviour, IPlayerControlls
     /// </summary>
     public void PlayerDeathHandler()
     {
+        m_animator.SetBool("isMoving", false);
+
         this.enabled = false;
     }
 }

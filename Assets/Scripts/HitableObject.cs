@@ -10,7 +10,7 @@ public class HitableObject : MonoBehaviour, IHitable
 
     public void OnHit(int damage)
     {
-        throw new System.NotImplementedException();
+        Debug.LogError("Method not implemented");
     }
 
     void Awake()
