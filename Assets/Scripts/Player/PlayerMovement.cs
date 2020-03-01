@@ -6,7 +6,7 @@ using UnityEngine;
 /// General Movement System for the Player
 /// Base Idea from: Unity Asset Store Bandits - Pixel Art from Sven Thole
 /// </summary>
-[RequireComponent(typeof(Rigidbody2D),typeof(Animator))]
+[RequireComponent(typeof(Rigidbody2D),typeof(Animator), typeof(AudioSource))]
 public class PlayerMovement : MonoBehaviour, IPlayerControlls
 {
     [SerializeField] float m_speed = 1.0f;
@@ -15,7 +15,7 @@ public class PlayerMovement : MonoBehaviour, IPlayerControlls
 
     Rigidbody2D m_rb2D;
     Animator m_animator;
-
+    AudioSource m_audioSource;
 
     float m_inputHorizontal = 0.0f;
     bool m_jumpPressed = false;
@@ -26,6 +26,7 @@ public class PlayerMovement : MonoBehaviour, IPlayerControlls
         // Get all required Components
         m_rb2D = GetComponent<Rigidbody2D>();
         m_animator = GetComponent<Animator>();
+        m_audioSource = GetComponent<AudioSource>();
         // save usedScale for rotation
         m_usedScale = new Vector3(transform.localScale.x, transform.localScale.y, transform.localScale.z);
     }
@@ -72,6 +73,22 @@ public class PlayerMovement : MonoBehaviour, IPlayerControlls
         else
         {
             m_animator.SetBool("isMoving", false);
+        }
+        // Activate Sound when moving
+        if (m_animator.GetBool("isMoving") && m_GroundSensor.IsGrounded())
+        {
+            if (!m_audioSource.clip)
+            {
+                Debug.LogError("Missing Moving Audioclip in: " + gameObject.name);
+            }
+            else if (!m_audioSource.isPlaying)
+            {
+                m_audioSource.Play();
+            }
+        }
+        else
+        {
+            m_audioSource.Stop();
         }
 
         // Handle jump

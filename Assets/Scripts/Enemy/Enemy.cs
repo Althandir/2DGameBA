@@ -3,7 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D),typeof(Collider2D), typeof(Animator))]
+[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D), typeof(Animator))]
+[RequireComponent(typeof(AudioSource))]
 public class Enemy : MonoBehaviour , IHitable
 {
     [SerializeField] protected int m_health = 100;
@@ -13,8 +14,14 @@ public class Enemy : MonoBehaviour , IHitable
 
     Animator m_animator;
     Rigidbody2D m_rb2D;
+    AudioSource m_audioSource;
     EnemyDetectionArea m_detectionArea;
     EnemyAttack m_enemyAttack;
+
+    [SerializeField] AudioClip m_slowMoveAudio;
+    [SerializeField] AudioClip m_fastMoveAudio;
+    [SerializeField] AudioClip m_onHitAudio;
+    [SerializeField] AudioClip m_onDeadAudio;
 
     float m_pausedMovementTimer;
     bool isActive;
@@ -28,6 +35,7 @@ public class Enemy : MonoBehaviour , IHitable
     {
         m_rb2D = GetComponent<Rigidbody2D>();
         m_animator = GetComponent<Animator>();
+        m_audioSource = GetComponent<AudioSource>();
         m_detectionArea = transform.GetChild(0).GetComponent<EnemyDetectionArea>();
         m_enemyAttack = transform.GetChild(1).GetComponent<EnemyAttack>();
 

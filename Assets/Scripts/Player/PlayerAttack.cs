@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(BoxCollider2D))]
-public sealed class PlayerAttack : HitArea, IPlayerControlls
+public sealed class PlayerAttack : Attack, IPlayerControlls
 {
     bool m_attackPressed;
     float m_attackTimer;
@@ -63,8 +63,10 @@ public sealed class PlayerAttack : HitArea, IPlayerControlls
     /// </summary>
     IEnumerator HandleAttack()
     {
+        // Start Animation
         m_animator.SetTrigger("Attacking");
-
+        // Play AttackSound
+        PlaySound();
         yield return new WaitForSeconds(attackDelay / 2);
 
         foreach (Collider2D collider in m_objectsToHit)

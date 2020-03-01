@@ -2,7 +2,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(BoxCollider2D))]
-public class EnemyAttack : HitArea
+public class EnemyAttack : Attack
 {
     readonly UnityEventFloat m_playerInRange = new UnityEventFloat();
     [Tooltip("Delay to finish AttackAnimation")]
@@ -59,6 +59,8 @@ public class EnemyAttack : HitArea
 
                 // Start attack animation
                 m_animator.SetTrigger("Attack");
+                // Play AttackSound
+                PlaySound();
                 // wait until half of animation
                 yield return new WaitForSeconds(m_animationDelay / 2);
                 // deal damage to all objects in list
