@@ -26,7 +26,7 @@ public class PlayerMovement : MonoBehaviour, IPlayerControlls
         // Get all required Components
         m_rb2D = GetComponent<Rigidbody2D>();
         m_animator = GetComponent<Animator>();
-        m_audioSource = GetComponent<AudioSource>();
+        m_audioSource = transform.GetChild(2).GetComponent<AudioSource>();
         // save usedScale for rotation
         m_usedScale = new Vector3(transform.localScale.x, transform.localScale.y, transform.localScale.z);
     }

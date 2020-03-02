@@ -21,8 +21,11 @@ public class Player : MonoBehaviour, IHitable
     public static Player GetInstance { get => Instance; }
 
     [SerializeField] int m_health = 100;
+    [SerializeField] AudioClip m_onHitAudio = null;
+    [SerializeField] AudioClip m_onDeadAudio = null;
     [SerializeField] UnityEvent m_onPlayerDead = new UnityEvent();
 
+    AudioSource m_audioSource;
     IEnumerator m_healthChecker;
     bool m_healthCheckerActive;
 
@@ -34,6 +37,9 @@ public class Player : MonoBehaviour, IHitable
     #region UnityMethods
     private void Awake()
     {
+        m_healthChecker = HealthChecker();
+        m_audioSource = GetComponent<AudioSource>();
+
         if (GetInstance)
         {
             Debug.LogError("Double Playerscript detected in " + gameObject.name + "! Script will be deleted!");
@@ -44,11 +50,15 @@ public class Player : MonoBehaviour, IHitable
             Instance = this;
             Debug.Log("Player set to Gameobject with Name: " + gameObject.name + ".");
         }
+        
     }
 
     private void Start()
     {
-        m_healthChecker = HealthChecker();
+        if (!m_onHitAudio)
+        {
+            Debug.LogError("Missing onHitAudio on Player");
+        }
 
         StartCoroutine(m_healthChecker);
     }
@@ -74,6 +84,7 @@ public class Player : MonoBehaviour, IHitable
                 if (m_health <= 0)
                 {
                     m_onPlayerDead.Invoke();
+                    m_audioSource.PlayOneShot(m_onDeadAudio);
                     m_healthCheckerActive = false;
                 }
             }
@@ -88,5 +99,6 @@ public class Player : MonoBehaviour, IHitable
     {
         Debug.Log("Player has been hit");
         m_health -= damage;
+        m_audioSource.PlayOneShot(m_onHitAudio, 1);
     }
 }

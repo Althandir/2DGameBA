@@ -15,21 +15,28 @@ public class Enemy : MonoBehaviour , IHitable
     Animator m_animator;
     Rigidbody2D m_rb2D;
     AudioSource m_audioSource;
+    AudioSource m_movementAudioSource;
     EnemyDetectionArea m_detectionArea;
     EnemyAttack m_enemyAttack;
 
+    [SerializeField] List<Transform> m_IdlePositions;
+
+    [SerializeField] AudioClip m_idleStayAudio;
+    [SerializeField] AudioClip m_alertedStayAudio;
     [SerializeField] AudioClip m_slowMoveAudio;
     [SerializeField] AudioClip m_fastMoveAudio;
     [SerializeField] AudioClip m_onHitAudio;
     [SerializeField] AudioClip m_onDeadAudio;
 
     float m_pausedMovementTimer;
+    float m_pausedAudioMovementTimer;
+    float m_stayOnIdlePositionTimer;
     bool isActive;
+
     protected Vector3 m_targetPosition;
     
-    [Tooltip("Number of different attack animations")]
-
     IEnumerator m_mainRoutine;
+    IEnumerator m_audioMovementRoutine;
 
     void Awake()
     {
@@ -38,8 +45,10 @@ public class Enemy : MonoBehaviour , IHitable
         m_audioSource = GetComponent<AudioSource>();
         m_detectionArea = transform.GetChild(0).GetComponent<EnemyDetectionArea>();
         m_enemyAttack = transform.GetChild(1).GetComponent<EnemyAttack>();
+        m_movementAudioSource = transform.GetChild(2).GetComponent<AudioSource>();
 
         m_mainRoutine = MainRoutine();
+        m_audioMovementRoutine = AudioMovementManager();
     }
 
     void Start()
@@ -50,8 +59,17 @@ public class Enemy : MonoBehaviour , IHitable
         m_enemyAttack.PlayerInRangeEvent.AddListener(OnPlayerInRange);
         // Add Listener if PlayerDies
         Player.GetInstance.OnPlayerDeadEvent.AddListener(OnPlayerDead);
+        // Set MovementAudio to SlowMove
+        m_movementAudioSource.clip = m_slowMoveAudio;
+        // Set IdleTransforms if empty
+        if (m_IdlePositions.Count == 0)
+        {
+            m_IdlePositions.Add(this.transform);
+        }
+
         // Start Enemyroutine
         StartCoroutine(m_mainRoutine);
+        StartCoroutine(m_audioMovementRoutine);
     }
 
     #region MovementSystem
@@ -61,12 +79,11 @@ public class Enemy : MonoBehaviour , IHitable
     /// <returns></returns>
     void FixedUpdate()
     {
-        if (isActive && m_pausedMovementTimer < 0)
+        if (isActive && m_pausedMovementTimer <= 0)
         {
             Vector2 thisPos = new Vector2(transform.position.x, transform.position.y);
             Vector2 targetPos = new Vector2(m_targetPosition.x, transform.position.y);
             float distance = Vector2.Distance(thisPos, targetPos);
-
             if (distance > 0)
             {
                 transform.position = Vector2.MoveTowards(thisPos, targetPos, 0.01f * m_speed);
@@ -81,7 +98,6 @@ public class Enemy : MonoBehaviour , IHitable
         else
         {
             m_animator.SetBool("isMoving", false);
-            m_pausedMovementTimer -= Time.fixedDeltaTime;
         }
     }
 
@@ -113,8 +129,16 @@ public class Enemy : MonoBehaviour , IHitable
     /// </summary>
     protected virtual void IdleBehavior()
     {
-        // TODO: Add IdleBehavoir
-        m_targetPosition = transform.position;
+        if (m_targetPosition.x == transform.position.x)
+        {
+            m_stayOnIdlePositionTimer -= 1;
+        }
+
+        if (m_stayOnIdlePositionTimer <= 0)
+        {
+            m_targetPosition = m_IdlePositions[UnityEngine.Random.Range(0, m_IdlePositions.Count)].position;
+            m_stayOnIdlePositionTimer = UnityEngine.Random.Range(3, 5);
+        }
     }
 
     /// <summary>
@@ -130,7 +154,6 @@ public class Enemy : MonoBehaviour , IHitable
             m_enemyAttack.StartAttackRoutine();
         }
     }
-
 
     /// <summary>
     /// Main Coroutine of the Enemy
@@ -162,6 +185,55 @@ public class Enemy : MonoBehaviour , IHitable
         }
     }
 
+    /// <summary>
+    /// Coroutine to manage audio of movement
+    /// </summary>
+    IEnumerator AudioMovementManager()
+    {
+        while (isActive)
+        {
+            if (m_pausedAudioMovementTimer > 0)
+            {
+                m_movementAudioSource.Stop();
+                yield return new WaitForSeconds(m_pausedAudioMovementTimer);
+                m_pausedAudioMovementTimer = 0;
+                m_movementAudioSource.Play();
+            }
+
+            if (!m_animator.GetBool("isAlerted") && !m_animator.GetBool("isMoving"))
+            {
+                ChangeMovementClip(m_idleStayAudio);
+            }
+            else if (!m_animator.GetBool("isAlerted") && m_animator.GetBool("isMoving"))
+            {
+                ChangeMovementClip(m_slowMoveAudio);
+            }
+            else if (m_animator.GetBool("isAlerted") && !m_animator.GetBool("isMoving"))
+            {
+                ChangeMovementClip(m_alertedStayAudio);
+            }
+            else if (m_animator.GetBool("isAlerted") && m_animator.GetBool("isMoving"))
+            {
+                ChangeMovementClip(m_fastMoveAudio);
+            }
+
+            yield return new WaitForSeconds(0.25f);
+
+        }
+    }
+    /// <summary>
+    /// Method to change audioclip of movement
+    /// </summary>
+    /// <param name="newClip"></param>
+    void ChangeMovementClip(AudioClip newClip)
+    {
+        if (m_movementAudioSource.clip != newClip)
+        {
+            m_movementAudioSource.Stop();
+            m_movementAudioSource.clip = newClip;
+            m_movementAudioSource.Play();
+        }
+    }
 
     /// <summary>
     /// Method called if enemy has been hit by player
@@ -172,6 +244,7 @@ public class Enemy : MonoBehaviour , IHitable
         if (this.enabled)
         {
             m_health -= damage / m_defenseModifier;
+            m_audioSource.PlayOneShot(m_onHitAudio);
             if (m_health <= 0)
             {
                 Die();
@@ -189,12 +262,14 @@ public class Enemy : MonoBehaviour , IHitable
     protected void Die()
     {
         StopAllRoutines();
-
+        
         GetComponent<BoxCollider2D>().enabled = false;
         m_rb2D.gravityScale = 0;
         m_animator.SetBool("isAlerted", false);
         m_animator.SetBool("isMoving", false);
         m_animator.SetTrigger("Dead");
+        m_movementAudioSource.Stop();
+        m_audioSource.PlayOneShot(m_onDeadAudio);
         this.enabled = false;
     }
 
@@ -213,6 +288,7 @@ public class Enemy : MonoBehaviour , IHitable
     void PauseMovement(float delay)
     {
         m_pausedMovementTimer = delay;
+        m_pausedAudioMovementTimer = delay;
     }
     #endregion
 
